@@ -61,7 +61,7 @@ def initialize_quobuz(qobuz_username: str | None = None, qobuz_password: str | N
 
     QOBUZ_APP = QobuzDL()
     QOBUZ_APP.get_tokens()
-    QOBUZ_APP.directory = "/downloads/qobuz"
+    QOBUZ_APP.directory = "/app/downloads/qobuz"
     QOBUZ_APP.folder_format = os.environ.get(
         "QOBUZ_FOLDERFORMAT", QOBUZ_APP.folder_format)
     QOBUZ_APP.track_format = os.environ.get(
