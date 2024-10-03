@@ -1,0 +1,10 @@
+version: '3.4'
+
+services:
+  music-dl-helper:
+    image: music-dl-helper
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    ports:
+      - 5002:5002
