@@ -1,8 +1,8 @@
 services:
-  music-dl-helper:
-    image: music-dl-helper
+  musicarr:
+    image: musicarr
     build:
       context: .
       dockerfile: ./Dockerfile
     ports:
-      - 5002:5002
+      - 5000:5000

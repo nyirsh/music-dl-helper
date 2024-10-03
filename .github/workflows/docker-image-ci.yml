@@ -2,15 +2,13 @@ name: Docker Image CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
     paths:
       - VERSION
   workflow_dispatch:
 
 jobs:
-
   build:
-
     runs-on: ubuntu-latest
 
     steps:
@@ -37,11 +35,10 @@ jobs:
         uses: docker/build-push-action@v6.9.0
         with:
           context: .
-          file: ./Dockerfile 
-          push: true  
-          build-args:
-            VERSION=${{ env.VERSION }}
+          file: ./Dockerfile
+          push: true
+          build-args: VERSION=${{ env.VERSION }}
           platforms: linux/386,linux/amd64,linux/arm/v6,linux/arm/v7,linux/arm64/v8,linux/ppc64le,linux/s390x
           tags: |
-            nyirsh/music-dl-helper:${{ env.VERSION }} 
-            nyirsh/music-dl-helper:latest
+            nyirsh/musicarr:${{ env.VERSION }} 
+            nyirsh/musicarr:latest
