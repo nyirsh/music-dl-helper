@@ -5,7 +5,7 @@ import io
 import os
 from flask import jsonify, request
 from qobuz_dl.core import QobuzDL
-from .stringutils import is_string_none_or_empty, get_last_string_line
+from .stringutils import is_string_none_or_empty, get_first_string_line, get_last_string_line
 from . import app, session
 
 
@@ -28,11 +28,7 @@ def handle_qobuz():
 
     # Loop through each URL and process it
     for url in urls:
-        result = download_from_qobuz(url)
-        response_data.append({
-            "url": url,
-            "output": result
-        })
+        response_data.append(download_from_qobuz(url))
 
     return jsonify({"results": response_data}), 200
 
@@ -68,9 +64,14 @@ def download_from_qobuz(url: str | None):
     and provides a status for it
     """
     if not session.is_qobuz_initialized():
-        return "QobuzDL not initialized"
+        return {"url": url,
+                "title": "Unknown",
+                "result": "QobuzDL not initialized"}
     if is_string_none_or_empty(url):
-        return "Invalid URL"
+        return {"url": url,
+                "title": "Unknown",
+                "result": "Invalid URL"}
+
     logging.info("Processing Qobuz URL: %s", url)
 
     # Create a StringIO object to capture log output
@@ -88,18 +89,30 @@ def download_from_qobuz(url: str | None):
 
         # Store the captured log output in a string
         captured_log_output = log_stream.getvalue()
+        title = get_first_string_line(
+            captured_log_output).replace("Downloading: ", "")
         result = get_last_string_line(captured_log_output)
+        if is_string_none_or_empty(title):
+            title = "Unknown"
+        if is_string_none_or_empty(result):
+            result = "Unknown"
 
-        logging.info(result)
-        return result if result else "Unknown"
+        logging.info("%s: %s", title, result)
+        return {"url": url,
+                "title": title,
+                "result": result}
     except AttributeError:
-        logging.error("Invalid URL")
-        return "Invalid URL"
+        logging.error("%s - Invalid URL", url)
+        return {"url": url,
+                "title": "Unknown",
+                "result": "Invalid URL"}
     # I genuinely don't know what kind of exceptions qobuz-dl might generate
     # but I don't want the application to crash because of it, so I'm accepting
     # a broad exception to keep things simple
     except Exception as e:  # pylint: disable=broad-exception-caught
-        logging.error(e)
-        return "Error"
+        logging.error("%s - %s", url, e)
+        return {"url": url,
+                "title": "Unknown",
+                "result": "Error"}
     finally:
         logger.removeHandler(handler)
