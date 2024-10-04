@@ -3,6 +3,9 @@ FROM python:3-slim
 
 EXPOSE 5000
 
+# Install curl for health checks
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+
 # Keeps Python from generating .pyc files in the container
 ENV PYTHONDONTWRITEBYTECODE=1
 
@@ -24,3 +27,5 @@ USER appuser
 
 # During debugging, this entry point will be overridden. For more information, please refer to https://aka.ms/vscode-docker-python-debug
 CMD ["gunicorn", "--bind", "0.0.0.0:5000", "musicarr.__main__:app"]
+
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD curl --fail http://localhost:5000/health || exit 1

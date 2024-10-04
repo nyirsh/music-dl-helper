@@ -3,11 +3,10 @@
 import logging
 import io
 import os
-from typing import Optional
 from flask import jsonify, request
 from qobuz_dl.core import QobuzDL
 from .stringutils import is_string_none_or_empty, get_last_string_line
-from . import app
+from . import app, session
 
 
 @app.route('/qobuz', methods=['POST'])
@@ -38,39 +37,29 @@ def handle_qobuz():
     return jsonify({"results": response_data}), 200
 
 
-QOBUZ_APP: Optional[QobuzDL] = None
-
-
-def initialize_quobuz(qobuz_username: str | None = None, qobuz_password: str | None = None):
+def initialize_quobuz():
     """
     Initialize the qobuz downloader. If qobuz_username or qobuz_password aren't provided
     it will try to read them from the environment variables.
     Returns True if the downloader has been successfully initialized
     """
-    global QOBUZ_APP  # pylint: disable=global-statement
-    if QOBUZ_APP is not None:
-        return True
-    if is_string_none_or_empty(qobuz_username):
-        qobuz_username = os.environ.get("QOBUZ_USERNAME", None)
-    if is_string_none_or_empty(qobuz_password):
-        qobuz_password = os.environ.get("QOBUZ_PASSWORD", None)
+    if not session.qobuz_enabled:
+        return None
+    if session.qobuz_app is not None:
+        return session.qobuz_app
 
-    if is_string_none_or_empty(qobuz_username) or is_string_none_or_empty(qobuz_password):
-        logging.error("Qobuzarr: Must specify username and password")
-        return False
+    qobuz_app = QobuzDL()
+    qobuz_app.get_tokens()
+    qobuz_app.directory = "/app/downloads/qobuz"
+    qobuz_app.folder_format = os.environ.get(
+        "QOBUZ_FOLDERFORMAT", qobuz_app.folder_format)
+    qobuz_app.track_format = os.environ.get(
+        "QOBUZ_TRACKFORMAT", qobuz_app.track_format)
+    qobuz_app.quality = os.environ.get("QOBUZ_QUALITY", qobuz_app.quality)
+    qobuz_app.initialize_client(
+        session.qobuz_username, session.qobuz_password, qobuz_app.app_id, qobuz_app.secrets)
 
-    QOBUZ_APP = QobuzDL()
-    QOBUZ_APP.get_tokens()
-    QOBUZ_APP.directory = "/app/downloads/qobuz"
-    QOBUZ_APP.folder_format = os.environ.get(
-        "QOBUZ_FOLDERFORMAT", QOBUZ_APP.folder_format)
-    QOBUZ_APP.track_format = os.environ.get(
-        "QOBUZ_TRACKFORMAT", QOBUZ_APP.track_format)
-    QOBUZ_APP.quality = os.environ.get("QOBUZ_QUALITY", QOBUZ_APP.quality)
-    QOBUZ_APP.initialize_client(
-        qobuz_username, qobuz_password, QOBUZ_APP.app_id, QOBUZ_APP.secrets)
-
-    return True
+    return qobuz_app
 
 
 def download_from_qobuz(url: str | None):
@@ -78,8 +67,7 @@ def download_from_qobuz(url: str | None):
     Given the URL of a song/album/playlist, it actually performs the download
     and provides a status for it
     """
-    global QOBUZ_APP  # pylint: disable=global-statement, global-variable-not-assigned
-    if not initialize_quobuz():
+    if not session.is_qobuz_initialized():
         return "QobuzDL not initialized"
     if is_string_none_or_empty(url):
         return "Invalid URL"
@@ -96,7 +84,7 @@ def download_from_qobuz(url: str | None):
 
     try:
         # Actually performs the download
-        QOBUZ_APP.handle_url(url)
+        session.qobuz_app.handle_url(url)
 
         # Store the captured log output in a string
         captured_log_output = log_stream.getvalue()
